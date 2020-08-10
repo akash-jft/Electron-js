@@ -1,6 +1,14 @@
 // Modules to control application life and create native browser window
-const {app, BrowserWindow} = require('electron')
+const {app, BrowserWindow, Menu, MenuItem} = require('electron')
 const path = require('path')
+const { title} = require('process')
+const electron=require('electron')
+const ipc=electron.ipcMain
+const dailog=electron.dialog
+const menu =electron.Menu
+const menuitem=electron.MenuItem
+
+let oneWin;
 
 function createWindow () {
   // Create the browser window.
@@ -11,20 +19,93 @@ function createWindow () {
       preload: path.join(__dirname, 'preload.js')
     }
   })
+ oneWin=new BrowserWindow({show:false,title:'akash',backgroundColor:'#228b22',parent:mainWindow,
+webPreferences: {
+  nodeIntegration: true
+}})
+
+  oneWin.once('ready-to-show',()=>{
+    oneWin.show()
+  })
+
+ipc.on('Asysncronous-error',function(event){
+//dailog.showErrorBox('An error','check the dailog')
+event.sender.send('Asysncronous-reply','Asysncronous-procees')
+})
+
+ipc.on('sync-message',function(event){
+event.returnValue='sync-reply'
+})
 
   // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
+   mainWindow.loadFile('index.html')
+   oneWin.loadFile('one.html')
+  //mainWindow.loadURL('http://localhost:3000/')
+ // oneWin.loadURL('https://github.com')
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  mainWindow.webContents.openDevTools()
 }
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   createWindow()
-  
+  const template=[
+    {
+      label:"Edit",
+      submenu:[
+        {role:'undo'},
+        {role:"selectall"}
+      ]
+    },
+    {
+    label:'demo',
+    submenu:[
+      {
+        label:'submenu1',
+        click:function(){
+          console.log('submenu')
+        }
+      },
+      {
+        type:'separator'
+      },
+      {
+        label:'submenu2'
+      }
+    ]
+    },
+    {
+      label:'view',
+      submenu:[
+        {
+label:'about electron',
+click:function(){
+  electron.shell.openExternal('http://electron.atom.io')
+        },
+        accelerator:'CmdOrCtrl +Shift + H'
+        }
+      ]
+    
+    }
+  ]
+ const menu= Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+
+const ctxmenu=new Menu()
+ctxmenu.append(new MenuItem({
+  label:'hello',
+  click:function(){
+    console.log('right click')
+  }
+}))
+ctxmenu.append(new MenuItem({role:'selectAll'}))
+oneWin.webContents.on('context-menu',function(e,params){
+  ctxmenu.popup(oneWin,params.x,params.y)
+})
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
